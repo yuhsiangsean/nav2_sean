@@ -22,24 +22,22 @@ a trimmed-down Nav2 stack (`bridge_launch.py`).
 3. **`use_stamped` default flipped `True` -> `False`** in `cmd_vel_bridge.py`
    — see "Jazzy -> Humble gotcha" below. This one actually matters
    functionally for the port, unlike the coordinate change.
-4. **`nav2_navfn_planner`'s plugin name changed from `::` to `/`** in
-   `nav2_params.yaml`: `planner_server` failed to bring up with `Failed to
-   create global planner. ... class nav2_navfn_planner::NavfnPlanner ...
-   does not exist. Declared types are nav2_navfn_planner/NavfnPlanner ...`.
-   **This is not a blanket Nav2-version convention** — don't assume every
-   `plugin:` line needs the same treatment. Converting all of them to `/`
-   on a hunch immediately broke `nav2_costmap_2d::InflationLayer` and
-   `nav2_controller::SimpleProgressChecker`/`SimpleGoalChecker`, which
-   turned out to still be registered with `::` on this same Humble
-   install — the error message named the actual declared types each time,
-   confirming it. So only `nav2_navfn_planner` is `/`; everything else
-   (behavior_server's 4 behaviors, bt_navigator's 2 navigators, the
-   progress/goal checkers, MPPI controller, smoother, both costmaps'
-   inflation layer, waypoint_follower) is back to the original `::` from
-   `px4_nav2_bridge`, unconfirmed either way — if any of those fail to
-   bring up with the same "class ... does not exist, declared types are
-   ..." error, fix only that one line to match what the error says, don't
-   generalize again.
+4. **Plugin name separator (`::` vs `/`) in `nav2_params.yaml` is
+   per-package on this Humble install, not a single blanket convention.**
+   Each mismatch surfaced one at a time as `lifecycle_manager` brought
+   nodes up in order, with the error naming the actual declared type:
+
+   | Package | Separator | How we know |
+   |---|---|---|
+   | `nav2_navfn_planner` | `/` | `planner_server` crashed, error said `Declared types are nav2_navfn_planner/NavfnPlanner` |
+   | `nav2_costmap_2d` | `::` (unchanged from `px4_nav2_bridge`) | tried `/` first on a hunch, `local_costmap` crashed, error said `Declared types are nav2_costmap_2d::InflationLayer ...` |
+   | `nav2_controller` | `::` (unchanged) | same hunch, same crash batch — error said `Declared types are nav2_controller::SimpleProgressChecker` etc. |
+   | `nav2_behaviors` | `/` | `behavior_server` crashed, error said `Declared types are nav2_behaviors/Spin` etc. |
+   | `nav2_bt_navigator`, `nav2_mppi_controller`, `nav2_smoother`, `nav2_waypoint_follower` | `::` (unchanged, **not yet confirmed**) | haven't reached that lifecycle stage yet — still the original value from `px4_nav2_bridge`, may or may not need changing |
+
+   **Don't generalize from one package's result to another** — fix each
+   one only when its own error message says so, using whatever separator
+   that message's "Declared types are ..." line actually shows.
 
 ## Where heading currently comes from (unchanged from px4_nav2_bridge)
 
