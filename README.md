@@ -22,17 +22,24 @@ a trimmed-down Nav2 stack (`bridge_launch.py`).
 3. **`use_stamped` default flipped `True` -> `False`** in `cmd_vel_bridge.py`
    — see "Jazzy -> Humble gotcha" below. This one actually matters
    functionally for the port, unlike the coordinate change.
-4. **All `plugin:` names in `nav2_params.yaml` converted from
-   `package::ClassName` to `package/ClassName`** — this Humble install's
-   Nav2 registers plugins with `/`, not `::`. Found this the hard way:
-   `planner_server` failed to bring up with `Failed to create global
-   planner. ... class nav2_navfn_planner::NavfnPlanner ... does not exist.
-   Declared types are nav2_navfn_planner/NavfnPlanner ...`. Every other
-   `plugin:` line in the file used the same `::` style, so all of them
+4. **`nav2_navfn_planner`'s plugin name changed from `::` to `/`** in
+   `nav2_params.yaml`: `planner_server` failed to bring up with `Failed to
+   create global planner. ... class nav2_navfn_planner::NavfnPlanner ...
+   does not exist. Declared types are nav2_navfn_planner/NavfnPlanner ...`.
+   **This is not a blanket Nav2-version convention** — don't assume every
+   `plugin:` line needs the same treatment. Converting all of them to `/`
+   on a hunch immediately broke `nav2_costmap_2d::InflationLayer` and
+   `nav2_controller::SimpleProgressChecker`/`SimpleGoalChecker`, which
+   turned out to still be registered with `::` on this same Humble
+   install — the error message named the actual declared types each time,
+   confirming it. So only `nav2_navfn_planner` is `/`; everything else
    (behavior_server's 4 behaviors, bt_navigator's 2 navigators, the
    progress/goal checkers, MPPI controller, smoother, both costmaps'
-   inflation layer, waypoint_follower) got converted the same way, not
-   just the one that happened to crash first.
+   inflation layer, waypoint_follower) is back to the original `::` from
+   `px4_nav2_bridge`, unconfirmed either way — if any of those fail to
+   bring up with the same "class ... does not exist, declared types are
+   ..." error, fix only that one line to match what the error says, don't
+   generalize again.
 
 ## Where heading currently comes from (unchanged from px4_nav2_bridge)
 
